@@ -83,7 +83,9 @@
 <script>
 
     function makePpt() {
+        // This next line is specific to this implementation
         const canv = document.getElementsByClassName("cornerstone-canvas")[0];
+        // The remaining lines in this function are not specific to this implementation
         const img = canv.toDataURL();
         let pres = new PptxGenJS();
         let slide = pres.addSlide();
