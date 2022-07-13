@@ -67,7 +67,9 @@
     <div><span id="coords">pageX=542, pageY=784, pixelX=76, pixelY=255.203125</span></div>
 
 </div>
-<button onclick="makePpt()">Make powerpoint</button>
+<button onclick="pres = new PptxGenJS()">Clear powerpoint</button>
+<button onclick="addImg(pres, document.getElementsByClassName('cornerstone-canvas')[0])">Add image to powerpoint</button>
+<button onclick="pres.writeFile({ fileName: 'images.pptx'})">Save powerpoint</button>
 
 <!-- include the cornerstone library -->
 <script src="./index_files/cornerstone.js.download"></script>
@@ -81,18 +83,28 @@
 
 
 <script>
+    var pres = new PptxGenJS();
+    function applyTemplate(slide) {
+        slide.background = { color: "2E2D29" };
+        slide.addImage({ path: 'logo.png' });
+    }
 
-    function makePpt() {
-        // This next line is specific to this implementation
-        const canv = document.getElementsByClassName("cornerstone-canvas")[0];
-        // The remaining lines in this function are not specific to this implementation
-        const img = canv.toDataURL();
-        let pres = new PptxGenJS();
-        let slide = pres.addSlide();
-        slide.background = { color: "DC143C"}
-        slide.addImage({ path: "logo.png"});
-        slide.addImage({ data: img, w: 1, h: 1, sizing: { type: 'contain', w: 9, h: 5 }});
-        pres.writeFile({ fileName: "single image.pptx"});
+    function addImg(ppt, canv) {
+        // This library creates a powerpoint slide that's 10 x 5.625 inches.
+        const slideW = 10;
+        const slideH = 5.625;
+        // The following 2 lines adjust the image to be as big as possible while still 
+        // fitting in the slide, while preserving aspect ratio.
+        const imgW = Math.min(slideW, slideH * canv.width/canv.height)
+        const imgH = Math.min(slideH, slideW * canv.height/canv.width)
+        const imageB64 = canv.toDataURL();
+        let slide = ppt.addSlide();
+        applyTemplate(slide);
+        slide.addImage({ data: imageB64, 
+            w: canv.width, h: canv.height, // The image dimensions
+            x: (slideW-imgW)/2, y: (slideH-imgH)/2, // centers the image
+            sizing: { type: 'contain', w: imgW, h: imgH }
+        });
     }
 
     const imageIds = [
