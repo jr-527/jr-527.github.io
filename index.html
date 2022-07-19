@@ -40,6 +40,7 @@
         <li>Mouse wheel - scroll images</li>
     </ul>
 
+    <button id="x64" class="btn">64x64</button>
     <button id="x256" class="btn">256x256</button>
     <button id="x512" class="btn">512x512</button>
     <button id="invert" class="btn">Toggle Invert</button>
@@ -69,7 +70,14 @@
 </div>
 <button onclick="pres = newPresentation()">Clear powerpoint</button>
 <button onclick="addImg(pres, document.getElementsByClassName('cornerstone-canvas')[0])">Add image to powerpoint</button>
+<button onclick="makeFullSizeImage()">Make a full-size image</button>
+<!-- Consider https://stackoverflow.com/questions/31391164/how-to-convert-content-inside-a-div-into-an-image-for-social-media-sharing in order to grab the parent div as a screenshot. -->
 <button onclick="pres.writeFile({ fileName: 'images.pptx'})">Save powerpoint</button>
+<button onclick="addImg(pres, document.getElementsByClassName('cornerstone-canvas')[1])">Add full image to powerpoint</button>
+
+<div id="fullResImage", style="width:512px;height:512px;position:relative;color:white">
+<canvas class="cornerstone-canvas" width="512" style="display: block; width: 512px; height: 512px;" height="512"></canvas>
+</div>
 
 <!-- include the cornerstone library -->
 <script src="./index_files/cornerstone.js.download"></script>
@@ -107,7 +115,7 @@
 
     var pres = newPresentation();
 
-    function addImg(ppt, canv) {
+    function addImg(ppt, canv, notes='') {
         // The following 2 lines adjust the image to be as big as possible while still 
         // fitting in the slide, while preserving aspect ratio.
         const imgW = Math.min(WIDTH, HEIGHT * canv.width/canv.height);
@@ -119,6 +127,23 @@
             x: (WIDTH-imgW)/2, y: (HEIGHT-imgH)/2, // centers the image
             sizing: { type: 'contain', w: imgW, h: imgH }
         });
+        if (notes.length > 0) {
+            slide.addNotes(notes);
+        }
+    }
+
+    function makeFullSizeImage() {
+        oldElement = document.getElementById('dicomImage');
+        newElement = document.getElementById('fullResImage');
+        cornerstone.enable(newElement);
+        x = cornerstone.getImage(oldElement);
+        console.log(x)
+        // Having them both use the same object causes trouble
+        y = structuredClone(cornerstone.getViewport(oldElement));
+        console.log(y)
+        y.scale = 2;
+        cornerstone.displayImage(newElement, x);
+        cornerstone.setViewport(newElement, y);
     }
 
     const imageIds = [
@@ -233,6 +258,12 @@
         });
 
         // Add event handler to the ww/wc apply button
+        document.getElementById('x64').addEventListener('click', function (e) {
+            element.style.width = '64px';
+            element.style.height = '64px';
+            cornerstone.resize(element);
+        });
+
         document.getElementById('x256').addEventListener('click', function (e) {
             element.style.width = '256px';
             element.style.height = '256px';
