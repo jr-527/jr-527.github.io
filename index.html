@@ -75,16 +75,17 @@
 <button onclick="pres.writeFile({ fileName: 'images.pptx'})">Save powerpoint</button>
 <button onclick="addImg(pres, document.getElementsByClassName('cornerstone-canvas')[1])">Add full image to powerpoint</button>
 -->
-<button onclick = "pres = XnewPresentation()">New Presentation</button>
-<button onclick = "XaddImageToSlide(
+<button onclick = "pres = newPresentation(); slideImages=[]">New Presentation</button>
+<button onclick = "addImageToSlide(
     document.getElementsByClassName('cornerstone-canvas')[0].toDataURL(),
+    slideImages,
     document.getElementsByClassName('cornerstone-canvas')[0].width,
     document.getElementsByClassName('cornerstone-canvas')[0].height
     )">
 Add image to slide</button>
-<button onclick = "XresetSlide()">Clear slide</button>
-<button onclick = "XfinalizeSlide(pres, slideImages)">Finalize Slide</button>
-<button onclick = "pres.WriteFile({ fileName: 'exported presentation.pptx'})">Export presentation</button>
+<button onclick = "slideImages = []">Clear slide</button>
+<button onclick = "finalizeSlide(pres, slideImages)">Finalize Slide</button>
+<button onclick = "pres.writeFile({ fileName: 'exported presentation.pptx'})">Export presentation</button>
 
 <div id="fullResImage", style="width:512px;height:512px;position:relative;color:white">
 <canvas class="cornerstone-canvas" width="512" style="display: block; width: 512px; height: 512px;" height="512"></canvas>
@@ -109,11 +110,8 @@ Add image to slide</button>
     const WIDTH = HEIGHT*16/9;
     const BACKGROUND_COLOR = '2E2D29';
 
-var slideImages = [];
-var slide;
-
 // Initializes a presentation
-function XnewPresentation() {
+function newPresentation() {
     const ppt = new PptxGenJS();
     // This part defines a slide template.
     ppt.defineLayout({ name: 'layout', height: HEIGHT, width: WIDTH });
@@ -121,25 +119,22 @@ function XnewPresentation() {
     ppt.defineSlideMaster({
         title: 'master', background: { color: BACKGROUND_COLOR },
         objects: [{ image: { data: STELLA_LOGO_B64, w: 192/96, h: 73/96, 
-            x: WIDTH-192/96, y: 0, //y: HEIGHT-73/96,
+            //x: WIDTH-192/96, y: 0, 
+            x: 0, y: HEIGHT-73/96,
             sizing: { type: 'contain', w: 192/96, h: 73/96 } }
         }]
     });
     return ppt;
 }
 
-// Clears "slideImages"
-function XresetSlide() {
-    slideImages = [];
-}
-
-
 // Makes a slide with all of the images in slideImages
-function XfinalizeSlide(ppt, slideImages, notes='') {
+function finalizeSlide(ppt, slideImages, notes='') {
     let n = slideImages.length;
     if (n == 0) {
+        alert("Must have at least 1 image to add!");
         throw "Must have at least 1 image to add!";
     }
+    let slide = ppt.addSlide({ masterName: 'master' });
     for (var i = 0; i < n; i++) {
         let picH = slideImages[i].h;
         let picW = slideImages[i].w;
@@ -152,69 +147,69 @@ function XfinalizeSlide(ppt, slideImages, notes='') {
             sizing: { type: 'contain', w: imgW, h: imgH }
         });
     }
-    slideImages = [];
+    slideImages.length = 0;
     if (notes.length > 0) {
         slide.addNotes(notes);
     }
-    ppt.addSlide({ masterName: 'master' });
 }
 
 // Adds an image to the slide
-function XaddImageToSlide(dataURL, width, height) {
+function addImageToSlide(dataURL, slideImages, width, height) {
     if (slideImages.length > 2) {
+        alert("Limit of 3 images per slide! This image was not added.");
         throw "Limit of 3 images per slide!";
     }
     slideImages.push({b64: dataURL, w: width, h: height});
     return slideImages.length;
 }
 
-    function newPresentation() {
-        const ppt = new PptxGenJS();
-        // This part defines a slide template.
-        ppt.defineLayout({ name: 'layout', height: HEIGHT, width: WIDTH });
-        ppt.layout = 'layout';
-        ppt.defineSlideMaster({
-            title: 'master', background: { color: BACKGROUND_COLOR },
-            objects: [{ image: { data: STELLA_LOGO_B64, w: 192/96, h: 73/96, 
-                x: WIDTH-192/96, y: 0, //y: HEIGHT-73/96,
-                sizing: { type: 'contain', w: 192/96, h: 73/96 } }
-            }]
-        });
-        return ppt;
-    }
+    // function newPresentation() {
+    //     const ppt = new PptxGenJS();
+    //     // This part defines a slide template.
+    //     ppt.defineLayout({ name: 'layout', height: HEIGHT, width: WIDTH });
+    //     ppt.layout = 'layout';
+    //     ppt.defineSlideMaster({
+    //         title: 'master', background: { color: BACKGROUND_COLOR },
+    //         objects: [{ image: { data: STELLA_LOGO_B64, w: 192/96, h: 73/96, 
+    //             x: WIDTH-192/96, y: 0, //y: HEIGHT-73/96,
+    //             sizing: { type: 'contain', w: 192/96, h: 73/96 } }
+    //         }]
+    //     });
+    //     return ppt;
+    // }
 
-    var pres = newPresentation();
+    // var pres = newPresentation();
 
-    function addImg(ppt, canv, notes='') {
-        // The following 2 lines adjust the image to be as big as possible while still 
-        // fitting in the slide, while preserving aspect ratio.
-        const imgW = Math.min(WIDTH, HEIGHT * canv.width/canv.height);
-        const imgH = Math.min(HEIGHT, WIDTH * canv.height/canv.width);
-        const imageB64 = canv.toDataURL();
-        let slide = ppt.addSlide({ masterName: 'master' });
-        slide.addImage({ data: imageB64, 
-            w: canv.width, h: canv.height, // The image dimensions
-            x: (WIDTH-imgW)/2, y: (HEIGHT-imgH)/2, // centers the image
-            sizing: { type: 'contain', w: imgW, h: imgH }
-        });
-        if (notes.length > 0) {
-            slide.addNotes(notes);
-        }
-    }
+    // function addImg(ppt, canv, notes='') {
+    //     // The following 2 lines adjust the image to be as big as possible while still 
+    //     // fitting in the slide, while preserving aspect ratio.
+    //     const imgW = Math.min(WIDTH, HEIGHT * canv.width/canv.height);
+    //     const imgH = Math.min(HEIGHT, WIDTH * canv.height/canv.width);
+    //     const imageB64 = canv.toDataURL();
+    //     let slide = ppt.addSlide({ masterName: 'master' });
+    //     slide.addImage({ data: imageB64, 
+    //         w: canv.width, h: canv.height, // The image dimensions
+    //         x: (WIDTH-imgW)/2, y: (HEIGHT-imgH)/2, // centers the image
+    //         sizing: { type: 'contain', w: imgW, h: imgH }
+    //     });
+    //     if (notes.length > 0) {
+    //         slide.addNotes(notes);
+    //     }
+    // }
 
-    function makeFullSizeImage() {
-        oldElement = document.getElementById('dicomImage');
-        newElement = document.getElementById('fullResImage');
-        cornerstone.enable(newElement);
-        x = cornerstone.getImage(oldElement);
-        console.log(x)
-        // Having them both use the same object causes trouble
-        y = structuredClone(cornerstone.getViewport(oldElement));
-        console.log(y)
-        y.scale = 2;
-        cornerstone.displayImage(newElement, x);
-        cornerstone.setViewport(newElement, y);
-    }
+    // function makeFullSizeImage() {
+    //     oldElement = document.getElementById('dicomImage');
+    //     newElement = document.getElementById('fullResImage');
+    //     cornerstone.enable(newElement);
+    //     x = cornerstone.getImage(oldElement);
+    //     console.log(x)
+    //     // Having them both use the same object causes trouble
+    //     y = structuredClone(cornerstone.getViewport(oldElement));
+    //     console.log(y)
+    //     y.scale = 2;
+    //     cornerstone.displayImage(newElement, x);
+    //     cornerstone.setViewport(newElement, y);
+    // }
 
     const imageIds = [
         'example://1',
