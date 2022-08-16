@@ -117,10 +117,13 @@
         </button>
       </div>
       <div class="modal-body">
-        <button onclick = "pptw = new PptWrapper();
-        pptw.updateDisplayText('pptInfo');
-        pptw.updateCanvasPreview('pptPreview');">
-            Reset Presentation</button>
+        <button onclick = "
+        if (confirm('Are you sure you want to clear the whole presentation?')) {
+            pptw = new PptWrapper();
+            pptw.updateDisplayText('pptInfo');
+            pptw.updateCanvasPreview('pptPreview');
+        }">
+            Clear Presentation</button>
         <button onclick = "
         if (typeof(pptw) == 'undefined') {
             pptw = new PptWrapper();
