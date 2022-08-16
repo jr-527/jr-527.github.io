@@ -308,10 +308,11 @@ function PptWrapper() {
     }
 
     // Given the id of an HTML canvas, updates the canvas to show a rough preview of the presentation.
+    // updateCanvasPreview(canvas) displays the current slide,
     // updateCanvasPreview(canvas, 0) displays the first slide,
     // updateCanvasPreview(canvas, 1) displays the second slide, and so on.
-    // If slideToDisplay is negative, it displays the current slide. If slideToDisplay is too large, it 
-    // displays the last slide.
+    // If slideToDisplay is negative or not provided, it displays the current slide.
+    // If slideToDisplay is too large, it displays the last slide.
     this.updateCanvasPreview = function(canvasId, slideToDisplay=-1) {
         slideToDisplay = Math.min(slideToDisplay, this.slides.length - 1);
         if (slideToDisplay == -1) {
@@ -365,9 +366,7 @@ function PptWrapper() {
                 let imgH = Math.min(slideHeight/nCols, slideWidth/nRows * picH/picW);
                 newSlide.addImage({ data: b64,
                     w: picW, h: picH,
-                    // Replace j with something better
                     x: (j%nRows)*slideWidth/nRows + (slideWidth/nRows - imgW)/2,
-                    // Do stuff with y.
                     y: slideHeight/nCols * Math.floor(j/nRows) + (slideHeight/nCols - imgH)/2,
                     sizing: { type: 'contain', w: imgW, h: imgH} // Prevents stretching
                 });
