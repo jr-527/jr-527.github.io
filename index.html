@@ -118,7 +118,9 @@
       </div>
       <div class="modal-body">
         <button onclick = "pptw = new PptWrapper();
-        pptw.updateDisplayText('pptInfo');">Reset Presentation</button>
+        pptw.updateDisplayText('pptInfo');
+        pptw.updateCanvasPreview('pptPreview');">
+            Reset Presentation</button>
         <button onclick = "
         if (typeof(pptw) == 'undefined') {
             pptw = new PptWrapper();
@@ -134,17 +136,23 @@
         );
         pptw.updateDisplayText('pptInfo');
         pptw.updateCanvasPreview('pptPreview');">
-        Add image to slide</button>
+            Add image to slide</button>
         <button onclick = "pptw.removeImageFromSlide();
         pptw.updateDisplayText('pptInfo');
         pptw.updateCanvasPreview('pptPreview');">
-            Remove image from slide
+            Remove last image from slide
         </button>
         <button onclick = "pptw.removeCurrentSlide();
         pptw.updateDisplayText('pptInfo');
         pptw.updateCanvasPreview('pptPreview');">
             Delete current slide
         </button>
+<!--         <button onclick = "pptw.exportPresentation()">
+            Export presentation
+        </button> -->
+        <p id="pptInfo"></p>
+        <canvas id="pptPreview" width="320", height="180"></canvas>
+        <br>
         <button onclick = "pptw.nextSlide();
         pptw.updateDisplayText('pptInfo');
         pptw.updateCanvasPreview('pptPreview');">
@@ -155,15 +163,12 @@
         pptw.updateCanvasPreview('pptPreview');">
             Previous slide
         </button>
-        <button onclick = "pptw.exportPresentation()">
-            Export presentation
-        </button>
-        <p id="pptInfo"></p>
-        <canvas id="pptPreview" width="320", height="180"></canvas>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-        <!-- <button type="button" class="btn btn-primary">Save changes</button> -->
+        <button type="button" class="btn btn-primary" onclick="pptw.exportPresentation()">
+            Export Presentation
+        </button>
       </div>
     </div>
   </div>
@@ -272,14 +277,14 @@ function PptWrapper() {
     // If n is negative or not given, then the last image is removed.
     // If n is too large, then this method does nothing.
     this.removeImageFromSlide = function(n=-1) {
-        let slide = this.slides[currentSlide];
+        let slide = this.slides[this.currentSlide];
         if (slide.length == 0) {
             return;
         }
         if (n < 0) {
             n = slide.length - 1;
         }
-        if (n < this.slides[currentSlide].length) {
+        if (n < this.slides[this.currentSlide].length) {
             slide.splice(n, 1);
         }
     }
@@ -303,22 +308,36 @@ function PptWrapper() {
     }
 
     // Given the id of an HTML canvas, updates the canvas to show a rough preview of the presentation.
-    this.updateCanvasPreview = function(canvasId) {
+    // updateCanvasPreview(canvas, 0) displays the first slide,
+    // updateCanvasPreview(canvas, 1) displays the second slide, and so on.
+    // If slideToDisplay is negative, it displays the current slide. If slideToDisplay is too large, it 
+    // displays the last slide.
+    this.updateCanvasPreview = function(canvasId, slideToDisplay=-1) {
+        slideToDisplay = Math.min(slideToDisplay, this.slides.length - 1);
+        if (slideToDisplay == -1) {
+            slideToDisplay = this.currentSlide;
+        }
         let canv = document.getElementById(canvasId);
         let ctx = canv.getContext('2d');
         ctx.clearRect(0,0, canv.width, canv.height);
-        let n = this.slides[this.currentSlide].length;
+        let n = this.slides[slideToDisplay].length;
+        let nRows = n;
+        if (n > 3) {
+            nRows = Math.ceil(Math.sqrt(n));
+        }
+        let nCols = Math.ceil(n/nRows);
         let count = 0;
-        for (i in this.slides[this.currentSlide]) {
+        for (i in this.slides[slideToDisplay]) {
             let img = new Image;
             img.onload = function() {
-                let xOffset = canv.width/n * count;
+                let xOffset = canv.width/nRows * (count % nRows);
+                let yOffset = canv.height/nCols * Math.floor(count / nRows);
                 count++;
-                let previewWidth = canv.width/n;
-                let previewHeight = canv.height/n;
-                ctx.drawImage(img,dx=xOffset,dy=0, dWidth=previewWidth, dHeight=previewHeight);
+                let previewWidth = canv.width/nRows;
+                let previewHeight = canv.height/nCols;
+                ctx.drawImage(img,dx=xOffset,dy=yOffset, dWidth=previewWidth, dHeight=previewHeight);
             }
-            img.src = this.slides[this.currentSlide][i].b64;
+            img.src = this.slides[slideToDisplay][i].b64;
         }
     }
 
@@ -331,17 +350,25 @@ function PptWrapper() {
                 continue;
             }
             let newSlide = this.pres.addSlide({ masterName: 'master' });
+            // This is a reasonable way to choose the number of rows and columns.
             let n = slideArray.length;
+            let nRows = n;
+            if (n > 3) {
+                nRows = Math.ceil(Math.sqrt(n));
+            }
+            let nCols = Math.ceil(n/nRows);
             for (j in slideArray) {
                 let picH = slideArray[j].h;
                 let picW = slideArray[j].w;
                 let b64 = slideArray[j].b64;
-                let imgW = Math.min(slideWidth/n, slideHeight * picW/picH);
-                let imgH = Math.min(slideHeight, slideWidth/n * picH/picW);
+                let imgW = Math.min(slideWidth/nRows, slideHeight/nCols * picW/picH);
+                let imgH = Math.min(slideHeight/nCols, slideWidth/nRows * picH/picW);
                 newSlide.addImage({ data: b64,
                     w: picW, h: picH,
-                    x: j*slideWidth/n + (slideWidth/n - imgW)/2,
-                    y: (slideHeight - imgH)/2,
+                    // Replace j with something better
+                    x: (j%nRows)*slideWidth/nRows + (slideWidth/nRows - imgW)/2,
+                    // Do stuff with y.
+                    y: slideHeight/nCols * Math.floor(j/nRows) + (slideHeight/nCols - imgH)/2,
                     sizing: { type: 'contain', w: imgW, h: imgH} // Prevents stretching
                 });
                 if (slideArray[j].notes.length > 0) {
