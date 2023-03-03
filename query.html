@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<button onclick="
+  console.log('Testing invalid queries:');
+  for (testCase of testFail) {
+    console.log('  Invalid Query: %c%s', 'color: black; background: #eee;', testCase);
+    if (isQueryValid(testCase)) {
+      console.log('  %cTEST FAILED, query accepted.', 'color: red;');
+    } else {
+      console.log('  %cQuery rejected.', 'color: green;');
+    }
+  }
+  console.log('Testing valid queries:');
+  for (testCase of testPass) {
+    console.log('  Valid query: %c%s', 'color: black; background: #eee;', testCase);
+    if (!isQueryValid(testCase)) {
+      console.log('  %cTEST FAILED, query rejected.', 'color: red;');
+    } else {
+      console.log('  %cQuery accepted.', 'color: green;');
+    }
+  }
+  console.log('Testing done.');">Validate example queries (see console)</button>
+<button onclick="
+  console.log('Examples:');
+  for (ex of testPass) {
+    console.log('Query: %c%s', 'color: black; background: #eee;', ex);
+    console.log('Result: %c%s', 'color: black; background: #eee;', parseValidQuery(ex));
+  }
+">Parse examples (see console)</button>
+<br>
+<input id="input1" onkeypress="search(this)"></input>
+
+<button onclick="
+  if (isQueryValid(inp.value)) {
+    out.innerHTML = parseValidQuery(inp.value)
+  } else {
+    out.innerHTML = ''
+    out2.innerHTML = 'Query is not valid!'
+  }"
+>Parse input</button>
+<div style="font-family:Monospace;">
+  <p id="output2" style="color:red"></p>
+  <span style="color:red;">></span><span id="output1" ></span><span style="color:red;">&lt</span>
+</div>
+
+<script>
+inp = document.getElementById('input1')
+out = document.getElementById('output1')
+out2 = document.getElementById('output2')
+
+search = (ele) => {
+  if (event.keyCode == 13) {
+    if (isQueryValid(inp.value)) {
+      out.innerHTML = parseValidQuery(inp.value);
+      out2.innerHTML = '';
+    } else {
+      out.innerHTML = '';
+      out2.innerHTML = 'Query is not valid!';
+    }
+  }
+}
+
+testFail = ['( )', ')hi(', '((hi)', '( AND )', 'hi AND', 'OR hi', 'AND', ' AND ', '', 'a NOT NOT b', ' ']
+testPass = ['ANDOR', 'NOTAND', ' (one AND two) OR three OR (four or five) ', '(one AND (two AND three)) OR four', 'one AND NOT two', 'and', '(")")', '"zero one" two   && AND"(three four)" OR     (five)', '👍']
+
+// I also thought of these cases, but was not sure whether or not they should count as valid.
+// - Anything including other special characters. Maybe we should escape them? Refuse them?
+// - Quotation marks with nothing in between, because this turns into the regex /.*.*/ which 
+//   matches everything, but the way this search works it accomplishes nothing.
+// - Entire query is spaces
+
+// Input - a valid query string.
+// Returns that query, parsed.
+parseValidQuery = inputString => {
+  outputString = '';
+  inQuotes = false;
+  for (let i = 0; i < inputString.length; i += 1) {
+    prevCharacter = outputString[outputString.length - 1]
+    cha = inputString[i];
+    if (cha == '"') {
+      let j = i+1;
+      while (j < inputString.length) {
+        if (inputString[j] == '"') {
+          break;
+        }
+        j += 1;
+      }
+      if (![' ', '('].includes(prevCharacter) && prevCharacter !== undefined) {
+        outputString += ' ';
+      }
+      stuffInQuotes = inputString.substring(i+1, j);
+      i = j;
+      stuffInQuotes = escapeCharacters(stuffInQuotes, true);
+      outputString += '/.*' + stuffInQuotes + '.*/';
+    } else { // We are not in quotation marks
+      if (cha == ' ') {
+        continue;
+      } else if (cha == '(' || cha == ')') {
+        if (cha == '(' && ![' ', '('].includes(prevCharacter) && prevCharacter !== undefined) {
+          outputString += ' ';
+        }
+        outputString += cha;
+      } else { // We find the start of a word
+        let j = i+1;
+        // This finds the end of the word
+        while (j < inputString.length) {
+          if ([' ', '(', ')', '"'].includes(inputString[j])) {
+            break;
+          }
+          j += 1;
+        }
+        word = inputString.substring(i, j);
+        i = j-1;
+        if (![' ', '('].includes(prevCharacter) && prevCharacter !== undefined) {
+          outputString += ' ';
+        }
+        if (word == 'AND' || word == 'OR' || word == 'NOT') {
+          outputString += word;
+        } else {
+          word = escapeCharacters(word, false);
+          outputString += '/.*' + word + '.*/';
+        }
+      }
+    }
+  }
+  return outputString;
+}
+
+// Escapes any special characters that are inside quotation marks.
+escapeCharacters = (inputString, escapeParentheses) => {
+  // Escapes any special characters in quotation marks
+  for (let i = inputString.length - 1; i >= 0; i -= 1) {
+    charsToEscape = ['+', '-', '!', '{', '}', '[', ']', '^', '~', 
+    '*', '?', ':', '\\', '/']
+    if (escapeParentheses) {
+      charsToEscape.push('(');
+      charsToEscape.push(')');
+    }
+    len2Escape = i < inputString.length - 1;
+    len2Escape = len2Escape && ['&', '|'].includes(inputString[i]);
+    len2Escape = len2Escape && ['&', '|'].includes(inputString[i+1]);
+    if (charsToEscape.includes(inputString[i]) || len2Escape) {
+      inputString = inputString.slice(0, i) + '\\' + inputString.slice(i);
+    }
+  }
+  return inputString;
+}
+
+// Checks to see if a string is valid.
+isQueryValid = inputString => {
+  // Erase anything within quotes, because nothing in quotes can be invalid
+  inQuotes = false;
+  for (let i = inputString.length - 1; i >= 0; i -= 1) {
+    if (!inQuotes) {
+      inQuotes = inputString[i] == '"';
+    } else {
+      if (inputString[i] == '"') {
+        inQuotes = false;
+      } else {
+        if (i==0) {
+          return false; // The string has an odd number of quotes
+        }
+        inputString = inputString.slice(0, i) + inputString.slice(i+1);
+      }
+    }
+  }
+  return !inQuotes && checkParens(inputString) && inputString.replaceAll(' ', '').length > 0 && checkOperators(inputString);
+}
+
+// This returns false if it finds a problem with the string.
+// This checks:
+// 1. The number of '(' is the same as the number of ')'
+// 2. The parentheses are a valid arrangement, so '(a)' is valid but ')a('
+//    is not.
+// 3. There is something inside every pair of parentheses, because '()' is invalid.
+//    This is because I tested it on the couchdb search and '()' gets an error.
+checkParens = inputString => {
+  netParens = 0;
+  for (character of inputString) {
+    if (character == '(') {
+      netParens += 1;
+    } else if (character == ')') {
+      netParens -= 1;
+    }
+    if (netParens < 0) {
+      return false;
+    }
+  }
+  return netParens == 0;
+}
+
+// Checks if the number of quotation marks is 
+
+// This returns false if it finds a problem with the string.
+// Things to check:
+// 1. There should be alphanumeric stuff between each operator and the previous 
+//    '(' or other operator. There should be alphanumeric stuff between each
+//    operator and the next ')' or other operator.
+checkOperators = inputString => {
+  const operatorRegex = new RegExp('\(' + 
+    '\\( *\\)|' + // "()" and "( )" are invalid
+    '\\( *AND|\\( *OR|\\( *NOT|' + // Open paren then operator
+    'AND *\\)|OR *\\)|NOT *\\)|' + // Close paren then operator
+    '^ *AND *$|^ *OR *$|^ *NOT *$|' + // Whole query is an operator
+    '^ *AND[ (]|^ *OR[ (]|^ *NOT[ (]|' + // Unpaired operators at start of query
+    '[ )]AND *$|[ )]OR *$|[ )]NOT *$|' + // Unpaired operators at end of the query
+    'AND +AND|AND +OR|OR +AND|OR +OR|NOT +AND|NOT +OR|NOT +NOT' + // AND AND
+    '\)')
+  return !operatorRegex.test(inputString);
+}
+</script>
+</html>
