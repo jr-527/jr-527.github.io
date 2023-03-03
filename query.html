@@ -73,6 +73,7 @@ testPass = ['ANDOR', 'NOTAND', ' (one AND two) OR three OR (four or five) ', '(o
 // Returns that query, parsed.
 parseValidQuery = inputString => {
   outputString = '';
+  inputString = inputString.replace(/[\u201C\u201D]/g, '"');;
   inQuotes = false;
   for (let i = 0; i < inputString.length; i += 1) {
     prevCharacter = outputString[outputString.length - 1]
@@ -123,19 +124,22 @@ parseValidQuery = inputString => {
       }
     }
   }
+  if (outputString.length == 0) {
+    return '/.*.*/';
+  }
   return outputString;
 }
 
 // Escapes any special characters that are inside quotation marks.
 escapeCharacters = (inputString, escapeParentheses) => {
   // Escapes any special characters in quotation marks
+  charsToEscape = ['+', '-', '!', '{', '}', '[', ']', '^', '~', 
+    '*', '?', ':', '\\', '/', '.', '$', '^']
+  if (escapeParentheses) {
+    charsToEscape.push('(');
+    charsToEscape.push(')');
+  }
   for (let i = inputString.length - 1; i >= 0; i -= 1) {
-    charsToEscape = ['+', '-', '!', '{', '}', '[', ']', '^', '~', 
-    '*', '?', ':', '\\', '/']
-    if (escapeParentheses) {
-      charsToEscape.push('(');
-      charsToEscape.push(')');
-    }
     len2Escape = i < inputString.length - 1;
     len2Escape = len2Escape && ['&', '|'].includes(inputString[i]);
     len2Escape = len2Escape && ['&', '|'].includes(inputString[i+1]);
@@ -149,6 +153,7 @@ escapeCharacters = (inputString, escapeParentheses) => {
 // Checks to see if a string is valid.
 isQueryValid = inputString => {
   // Erase anything within quotes, because nothing in quotes can be invalid
+  inputString = inputString.replace(/[\u201C\u201D]/g, '"');;
   inQuotes = false;
   for (let i = inputString.length - 1; i >= 0; i -= 1) {
     if (!inQuotes) {
@@ -164,7 +169,7 @@ isQueryValid = inputString => {
       }
     }
   }
-  return !inQuotes && checkParens(inputString) && inputString.replaceAll(' ', '').length > 0 && checkOperators(inputString);
+  return !inQuotes && checkParens(inputString) && inputString.length > 0 && checkOperators(inputString);
 }
 
 // This returns false if it finds a problem with the string.
@@ -199,12 +204,12 @@ checkParens = inputString => {
 checkOperators = inputString => {
   const operatorRegex = new RegExp('\(' + 
     '\\( *\\)|' + // "()" and "( )" are invalid
-    '\\( *AND|\\( *OR|\\( *NOT|' + // Open paren then operator
-    'AND *\\)|OR *\\)|NOT *\\)|' + // Close paren then operator
+    '\\( *AND|\\( *OR|\\( *NOT|' + // ( then operator
+    'AND *\\)|OR *\\)|NOT *\\)|' + // ) then operator
     '^ *AND *$|^ *OR *$|^ *NOT *$|' + // Whole query is an operator
     '^ *AND[ (]|^ *OR[ (]|^ *NOT[ (]|' + // Unpaired operators at start of query
     '[ )]AND *$|[ )]OR *$|[ )]NOT *$|' + // Unpaired operators at end of the query
-    'AND +AND|AND +OR|OR +AND|OR +OR|NOT +AND|NOT +OR|NOT +NOT' + // AND AND
+    'AND +AND|AND +OR|OR +AND|OR +OR|NOT +AND|NOT +OR|NOT +NOT' + // 2 operators other than "OR NOT", "AND NOT"
     '\)')
   return !operatorRegex.test(inputString);
 }
