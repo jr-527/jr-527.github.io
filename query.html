@@ -60,8 +60,8 @@ search = (ele) => {
   }
 }
 
-testFail = ['( )', ')hi(', '((hi)', '( AND )', 'hi AND', 'OR hi', 'AND', ' AND ', '', 'a NOT NOT b', ' ']
-testPass = ['ANDOR', 'NOTAND', ' (one AND two) OR three OR (four or five) ', '(one AND (two AND three)) OR four', 'one AND NOT two', 'and', '(")")', '"zero one" two   && AND"(three four)" OR     (five)', '👍']
+testFail = ['( )', ')hi(', '((hi)', '( AND )', 'hi AND', 'OR hi', 'AND', ' AND ', '', 'a NOT NOT b', '"hi" "', 'and', '"""']
+testPass = ['ANDOR', 'NOTAND', ' (one and two) OR ThReE? or (four or five) ', '(one AND (two AND three)) OR four', 'one AND NOT two', '(")")', '"zero one" two   && AND"(three four)" OR     (five)', '👍', 'one NOT two']
 
 // I also thought of these cases, but was not sure whether or not they should count as valid.
 // - Anything including other special characters. Maybe we should escape them? Refuse them?
@@ -73,7 +73,8 @@ testPass = ['ANDOR', 'NOTAND', ' (one AND two) OR three OR (four or five) ', '(o
 // Returns that query, parsed.
 parseValidQuery = inputString => {
   outputString = '';
-  inputString = inputString.replace(/[\u201C\u201D]/g, '"');;
+  // Replace fancy quotes with regular quotes
+  inputString = inputString.replace(/[\u201C\u201D]/g, '"').toLowerCase();
   inQuotes = false;
   for (let i = 0; i < inputString.length; i += 1) {
     prevCharacter = outputString[outputString.length - 1]
@@ -115,8 +116,8 @@ parseValidQuery = inputString => {
         if (![' ', '('].includes(prevCharacter) && prevCharacter !== undefined) {
           outputString += ' ';
         }
-        if (word == 'AND' || word == 'OR' || word == 'NOT') {
-          outputString += word;
+        if (word == 'and' || word == 'or' || word == 'not') {
+          outputString += word.toUpperCase();
         } else {
           word = escapeCharacters(word, false);
           outputString += '/.*' + word + '.*/';
@@ -153,23 +154,24 @@ escapeCharacters = (inputString, escapeParentheses) => {
 // Checks to see if a string is valid.
 isQueryValid = inputString => {
   // Erase anything within quotes, because nothing in quotes can be invalid
-  inputString = inputString.replace(/[\u201C\u201D]/g, '"');;
+  // Replace fancy quotes with regular quotes
+  inputString = inputString.replace(/[\u201C\u201D]/g, '"').toLowerCase();
   inQuotes = false;
-  for (let i = inputString.length - 1; i >= 0; i -= 1) {
-    if (!inQuotes) {
-      inQuotes = inputString[i] == '"';
-    } else {
-      if (inputString[i] == '"') {
-        inQuotes = false;
-      } else {
-        if (i==0) {
-          return false; // The string has an odd number of quotes
-        }
-        inputString = inputString.slice(0, i) + inputString.slice(i+1);
-      }
+  // This loop erases anything within quotation marks, to simplify checking
+  // for validity, because anything in quotation marks should be interperted as 
+  // part of the search query rather than as search operators.
+  outputString = '';
+  for (let i = 0; i < inputString.length; i += 1) {
+    cha = inputString[i];
+    if (cha == '"') {
+      inQuotes = !inQuotes;
+      outputString = outputString + '"';
+      continue;
+    } else if (!inQuotes) {
+      outputString = outputString + cha;
     }
   }
-  return !inQuotes && checkParens(inputString) && inputString.length > 0 && checkOperators(inputString);
+  return !inQuotes && checkParens(outputString) && outputString.length > 0 && checkOperators(outputString);
 }
 
 // This returns false if it finds a problem with the string.
@@ -177,8 +179,6 @@ isQueryValid = inputString => {
 // 1. The number of '(' is the same as the number of ')'
 // 2. The parentheses are a valid arrangement, so '(a)' is valid but ')a('
 //    is not.
-// 3. There is something inside every pair of parentheses, because '()' is invalid.
-//    This is because I tested it on the couchdb search and '()' gets an error.
 checkParens = inputString => {
   netParens = 0;
   for (character of inputString) {
@@ -194,22 +194,16 @@ checkParens = inputString => {
   return netParens == 0;
 }
 
-// Checks if the number of quotation marks is 
-
-// This returns false if it finds a problem with the string.
-// Things to check:
-// 1. There should be alphanumeric stuff between each operator and the previous 
-//    '(' or other operator. There should be alphanumeric stuff between each
-//    operator and the next ')' or other operator.
+// This returns false if it finds a problem with the string related to 
 checkOperators = inputString => {
   const operatorRegex = new RegExp('\(' + 
     '\\( *\\)|' + // "()" and "( )" are invalid
-    '\\( *AND|\\( *OR|\\( *NOT|' + // ( then operator
-    'AND *\\)|OR *\\)|NOT *\\)|' + // ) then operator
-    '^ *AND *$|^ *OR *$|^ *NOT *$|' + // Whole query is an operator
-    '^ *AND[ (]|^ *OR[ (]|^ *NOT[ (]|' + // Unpaired operators at start of query
-    '[ )]AND *$|[ )]OR *$|[ )]NOT *$|' + // Unpaired operators at end of the query
-    'AND +AND|AND +OR|OR +AND|OR +OR|NOT +AND|NOT +OR|NOT +NOT' + // 2 operators other than "OR NOT", "AND NOT"
+    '\\( *and|\\( *or|\\( *not|' + // ( then operator
+    'and *\\)|or *\\)|not *\\)|' + // ) then operator
+    '^ *and *$|^ *or *$|^ *not *$|' + // Whole query is an operator
+    '^ *and[ (]|^ *or[ (]|^ *not[ (]|' + // Unpaired operators at start of query
+    '[ )]and *$|[ )]or *$|[ )]not *$|' + // Unpaired operators at end of the query
+    'and +and|and +or|or +and|or +or|not +and|not +or|not +not' + // 2 operators other than "OR NOT", "AND NOT"
     '\)')
   return !operatorRegex.test(inputString);
 }
